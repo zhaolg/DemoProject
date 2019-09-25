@@ -4,6 +4,7 @@ import com.example.demo.redis.PECode;
 import com.example.demo.redis.RedisKeyValue;
 import com.example.demo.redis.RedisValue;
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import com.google.gson.Gson;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -17,6 +18,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.util.CollectionUtils;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author lingang.zhao
@@ -116,23 +118,63 @@ public class RedisMemoryTest {
             values.add(RedisKeyValue.builder().expireTime(Integer.MAX_VALUE).key(keyPrefix + val).
                     value(RedisValue.builder().exp(String.valueOf(Integer.MAX_VALUE)).val("1").build()).build());
             if (values.size() == 1000) {
-                setRedis(values);
+                delRedis(values);
                 values.clear();
                 System.out.println("index" + i);
             }
         }
         if (!CollectionUtils.isEmpty(values)) {
-            setRedis(values);
+            delRedis(values);
             values.clear();
         }
     }
 
-    private void setRedis(List<RedisKeyValue> values) {
+    /**
+     * Hash 结构测试
+     */
+    @Test
+    public void testHashRedis() {
+        String keyPrefix = "01:201155:";
+        long business = 10054595993888L;
+        List<RedisKeyValue> values = Lists.newArrayList();
+        for (int i = 0; i < 1000001; i++) {
+            long def = business + i;
+            String val = PECode.encode(def);
+            values.add(RedisKeyValue.builder().expireTime(Integer.MAX_VALUE).key(keyPrefix + val).
+                    value(RedisValue.builder().exp(String.valueOf(Integer.MAX_VALUE)).val("1").build()).build());
+            if (values.size() == 1000) {
+                setHashRedis(values);
+                values.clear();
+                System.out.println("index" + i);
+            }
+        }
+        if (!CollectionUtils.isEmpty(values)) {
+            setHashRedis(values);
+            values.clear();
+        }
+    }
+
+    private void setStringRedis(List<RedisKeyValue> values) {
         redisTemplate.executePipelined(new RedisCallback<List<String>>() {
             @Override
             public List<String> doInRedis(RedisConnection redisConnection) throws DataAccessException {
                 values.forEach(val -> {
                     redisConnection.stringCommands().setEx(val.getKey().getBytes(), val.getExpireTime(), gson.toJson(val.getValue()).getBytes());
+                });
+                return null;
+            }
+        });
+    }
+
+    private void setHashRedis(List<RedisKeyValue> values) {
+        redisTemplate.executePipelined(new RedisCallback<List<String>>() {
+            @Override
+            public List<String> doInRedis(RedisConnection redisConnection) throws DataAccessException {
+                values.forEach(val -> {
+                   Map<byte[], byte[]> map = Maps.newHashMap();
+                    map.put("exp".getBytes(),val.getValue().getExp().getBytes());
+                    map.put("val".getBytes(),val.getValue().getVal().getBytes());
+                    redisConnection.hashCommands().hMSet(val.getKey().getBytes(), map);
                 });
                 return null;
             }
