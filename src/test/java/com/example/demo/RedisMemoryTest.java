@@ -143,15 +143,27 @@ public class RedisMemoryTest {
             values.add(RedisKeyValue.builder().expireTime(Integer.MAX_VALUE).key(keyPrefix + val).
                     value(RedisValue.builder().exp(String.valueOf(Integer.MAX_VALUE)).val("1").build()).build());
             if (values.size() == 1000) {
-                setHashRedis(values);
+                delRedis(values);
                 values.clear();
                 System.out.println("index" + i);
             }
         }
         if (!CollectionUtils.isEmpty(values)) {
-            setHashRedis(values);
+            delRedis(values);
             values.clear();
         }
+    }
+
+    private void setJsonRedis(List<RedisKeyValue> values) {
+        redisTemplate.executePipelined(new RedisCallback<List<String>>() {
+            @Override
+            public List<String> doInRedis(RedisConnection redisConnection) throws DataAccessException {
+                values.forEach(val -> {
+                    redisConnection.stringCommands().setEx(val.getKey().getBytes(), val.getExpireTime(), gson.toJson(val.getValue()).getBytes());
+                });
+                return null;
+            }
+        });
     }
 
     private void setStringRedis(List<RedisKeyValue> values) {
@@ -159,7 +171,8 @@ public class RedisMemoryTest {
             @Override
             public List<String> doInRedis(RedisConnection redisConnection) throws DataAccessException {
                 values.forEach(val -> {
-                    redisConnection.stringCommands().setEx(val.getKey().getBytes(), val.getExpireTime(), gson.toJson(val.getValue()).getBytes());
+                    String value = "exp:"+ PECode.encode(Long.valueOf(val.getValue().getExp())) ;
+                    redisConnection.stringCommands().setEx(val.getKey().getBytes(), val.getExpireTime(), value.getBytes());
                 });
                 return null;
             }
