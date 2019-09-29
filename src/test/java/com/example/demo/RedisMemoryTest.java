@@ -40,7 +40,7 @@ public class RedisMemoryTest {
     @Test
     public void testOldRedis() {
 
-        String key = "0:1:201155:100:545953888";
+        String key = "0:1:201155:1000545953888";
 
         List<RedisKeyValue> values = Lists.newArrayList();
         for (int i = 0; i < 1000001; i++) {
